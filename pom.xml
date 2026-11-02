@@ -34,6 +34,10 @@
     <modules>
         <module>service-abonnements</module>
         <module>service-facturation</module>
+        <module>service-clients</module>
+        <module>service-gateway</module>
+        <module>config-server</module>
+        <module>Eureka</module>
     </modules>
 
     <dependencies>
