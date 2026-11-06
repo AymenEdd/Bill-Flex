@@ -17,20 +17,19 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class ClientService {
-   private final Clientrepository clientrepository;
-    private StatutClient StatutClient;
+    private final Clientrepository clientrepository;
 
     public ClientResponse create(@Valid ClientRequest dto){
-       Client client = Client.builder()
-               .name(dto.nom())
-               .email(dto.email())
-               .numeroTVA(dto.numeroTVA())
-               .modePaiement(dto.modePaiement())
-               .statut(StatutClient)
-               .build();
+        Client client = Client.builder()
+                .name(dto.nom())
+                .email(dto.email())
+                .numeroTVA(dto.numeroTVA())
+                .modePaiement(dto.modePaiement())
+                .statut(StatutClient.Actif)
+                .build();
 
-       return toResponse(clientrepository.save(client));
-   }
+        return toResponse(clientrepository.save(client));
+    }
 
 
     @Transactional
