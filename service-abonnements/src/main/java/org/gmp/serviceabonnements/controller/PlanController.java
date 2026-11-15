@@ -6,6 +6,8 @@ import org.gmp.serviceabonnements.dto.PlanResponse;
 import org.gmp.serviceabonnements.service.PlanService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -57,6 +59,17 @@ public class PlanController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deactivate(@PathVariable Long id) {
         planService.deactivate(id);
+    }
+    @GetMapping("/page")
+    public Page<PlanResponse> getAllPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String direction
+    ) {
+        return planService.findAllPaginated(
+                page, size, sortBy, direction
+        );
     }
 }
 

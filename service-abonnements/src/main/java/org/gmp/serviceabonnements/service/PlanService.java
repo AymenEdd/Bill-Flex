@@ -8,6 +8,10 @@ import org.gmp.serviceabonnements.repository.PlanRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 
@@ -92,6 +96,48 @@ public class PlanService {
                         HttpStatus.NOT_FOUND,
                         "Plan introuvable avec ID : " + id
                 ));
+    }
+    public Page<PlanResponse> findAllPaginated(
+            int page,
+            int size,
+            String sortBy,
+            String direction
+    ) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid pagination parameters"
+            );
+        }
+
+        if (!sortBy.equals("nom")
+                && !sortBy.equals("prixMensuel")
+                && !sortBy.equals("id")) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid sort field"
+            );
+        }
+
+        Sort.Direction sortDirection;
+
+        try {
+            sortDirection = Sort.Direction.fromString(direction);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Direction must be asc or desc"
+            );
+        }
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortDirection, sortBy)
+        );
+
+        return planRepository.findAll(pageable)
+                .map(PlanMapper::toResponse);
     }
 }
 
