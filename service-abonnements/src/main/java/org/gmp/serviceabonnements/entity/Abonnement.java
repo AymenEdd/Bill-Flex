@@ -2,7 +2,7 @@ package org.gmp.serviceabonnements.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
-
+import jakarta.persistence.Column;
 @Entity
 @Table(name = "abonnements")
 public class Abonnement {
@@ -32,6 +32,9 @@ public class Abonnement {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StatutAbonnement statut = StatutAbonnement.ACTIF;
+
+    @Column(nullable = false)
+    private boolean expirationNotificationSent = false;
 
     @Version
     private Long version;
@@ -100,5 +103,13 @@ public class Abonnement {
 
     public Long getVersion() {
         return version;
+    }
+
+    public boolean isExpirationNotificationSent() {
+        return expirationNotificationSent;
+    }
+
+    public void setExpirationNotificationSent(boolean expirationNotificationSent) {
+        this.expirationNotificationSent = expirationNotificationSent;
     }
 }

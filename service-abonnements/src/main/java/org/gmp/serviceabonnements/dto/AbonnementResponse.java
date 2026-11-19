@@ -66,4 +66,6 @@ public class AbonnementResponse {
     public StatutAbonnement getStatut() {
         return statut;
     }
+
+
 }

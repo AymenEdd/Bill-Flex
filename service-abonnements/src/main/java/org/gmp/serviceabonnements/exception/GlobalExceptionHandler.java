@@ -6,7 +6,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
-
+import feign.FeignException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,11 +19,13 @@ public class GlobalExceptionHandler {
             ResponseStatusException ex) {
 
         Map<String, Object> body = new HashMap<>();
+        body.put("message", ex.getReason());
         body.put("timestamp", LocalDateTime.now());
         body.put("status", ex.getStatusCode().value());
-        body.put("message", ex.getReason());
 
-        return ResponseEntity.status(ex.getStatusCode()).body(body);
+        return ResponseEntity
+                .status(ex.getStatusCode())
+                .body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -55,5 +57,24 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.internalServerError().body(body);
     }
+    @ExceptionHandler(FeignException.NotFound.class)
+    public ResponseEntity<Map<String, String>> handleClientNotFound(
+            FeignException.NotFound ex) {
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "Client not found"));
+    }
+
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<Map<String, String>> handleFeignException(
+            FeignException ex) {
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of(
+                        "error",
+                        "Clients service is unavailable or returned an error"
+                ));
+    }
+
 }
 
