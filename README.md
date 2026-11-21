@@ -1,5 +1,7 @@
 # Bill-Flex
 
+Le [guide de notifications et d’environnement local](docs/notifications/README.md) décrit Docker Compose, les contrats, les tests et la démonstration jusqu’à l’e-mail. La [collection Postman Notifications](docs/notifications/Bill-Flex-notifications.postman_collection.json) couvre les requêtes REST du module.
+
 ## Description
 
 **Bill-Flex** est une plateforme de facturation récurrente d'abonnements SaaS B2B, construite en architecture microservices.
