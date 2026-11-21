@@ -38,6 +38,7 @@
         <module>service-gateway</module>
         <module>config-server</module>
         <module>Eureka</module>
+        <module>service-notifications</module>
     </modules>
 
     <dependencies>
