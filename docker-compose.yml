@@ -1,0 +1,101 @@
+x-postgres: &postgres
+  image: postgres:17.9-alpine
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+    interval: 3s
+    timeout: 3s
+    retries: 20
+
+services:
+  postgres-abonnements:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: abonnements
+      POSTGRES_USER: abonnements
+      POSTGRES_PASSWORD: ${ABONNEMENTS_DB_PASSWORD:?Définir ABONNEMENTS_DB_PASSWORD}
+    ports: ["127.0.0.1:55431:5432"]
+    volumes: ["abonnements-data:/var/lib/postgresql/data"]
+
+  postgres-facturation:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: facturation
+      POSTGRES_USER: facturation
+      POSTGRES_PASSWORD: ${FACTURATION_DB_PASSWORD:?Définir FACTURATION_DB_PASSWORD}
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["facturation-data:/var/lib/postgresql/data"]
+
+  postgres-clients:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: clients
+      POSTGRES_USER: clients
+      POSTGRES_PASSWORD: ${CLIENTS_DB_PASSWORD:?Définir CLIENTS_DB_PASSWORD}
+    ports: ["127.0.0.1:55433:5432"]
+    volumes: ["clients-data:/var/lib/postgresql/data"]
+
+  postgres-notifications:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: notifications
+      POSTGRES_USER: notifications
+      POSTGRES_PASSWORD: ${NOTIFICATIONS_DB_PASSWORD:?Définir NOTIFICATIONS_DB_PASSWORD}
+    ports: ["127.0.0.1:55434:5432"]
+    volumes: ["notifications-data:/var/lib/postgresql/data"]
+
+  kafka:
+    image: apache/kafka:4.2.2
+    ports: ["127.0.0.1:9092:9092"]
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:29093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_LOG_INDEX_SIZE_MAX_BYTES: 1048576
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_NUM_PARTITIONS: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes: ["kafka-data:/var/lib/kafka/data"]
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "kafka:29092", "--list"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  kafka-init:
+    image: apache/kafka:4.2.2
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        for topic in subscription-renewed invoice-issued payment-received invoice-issued.DLT payment-received.DLT; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --create --if-not-exists --topic "$$topic" --partitions 1 --replication-factor 1
+        done
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8025/api/v2/messages"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  abonnements-data:
+  facturation-data:
+  clients-data:
+  notifications-data:
+  kafka-data:
