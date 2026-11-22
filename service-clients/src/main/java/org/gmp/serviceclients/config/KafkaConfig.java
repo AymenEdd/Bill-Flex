@@ -44,13 +44,21 @@ public class KafkaConfig {
         configs.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 2000);
         KafkaAdmin admin = new KafkaAdmin(configs);
         admin.setFatalIfBrokerNotAvailable(false);
-        admin.setAutoCreate(false);
+        admin.setAutoCreate(true);
         return admin;
     }
 
     @Bean
     public NewTopic paymentReceivedTopic() {
         return TopicBuilder.name(TOPIC_PAYMENT_RECEIVED)
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic invoiceIssuedTopic() {
+        return TopicBuilder.name(TOPIC_INVOICE_ISSUED)
                 .partitions(1)
                 .replicas(1)
                 .build();

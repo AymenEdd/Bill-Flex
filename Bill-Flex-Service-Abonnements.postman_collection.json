@@ -1,0 +1,566 @@
+{
+  "info": {
+    "name": "Bill-Flex Service Abonnements",
+    "description": "Postman collection for service-abonnements API testing (local + gateway)\nCovers: CRUD Plan, CRUD Abonnement, Aggregation (V4), Resilience (V6), Idempotency",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "bill-flex-abonnements-collection"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081", "type": "string" },
+    { "key": "gatewayUrl", "value": "http://localhost:8089", "type": "string" },
+    { "key": "clientId", "value": "1", "type": "string" },
+    { "key": "planId", "value": "1", "type": "string" },
+    { "key": "subscriptionId", "value": "", "type": "string" },
+    { "key": "idempotencyKey", "value": "", "type": "string" }
+  ],
+  "auth": { "type": "noauth" },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.request.url.path.includes('/abonnements') && pm.request.method === 'POST' && pm.request.url.path.endsWith('/abonnements')) {",
+          "  const key = 'idem-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);",
+          "  pm.collectionVariables.set('idempotencyKey', key);",
+          "  pm.request.headers.add({ key: 'Idempotency-Key', value: key });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Status code is 2xx or 404', function () {",
+          "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204, 404]);",
+          "});",
+          "",
+          "pm.test('Response is valid JSON', function () {",
+          "  pm.response.to.be.json;",
+          "});",
+          "",
+          "if (pm.request.method === 'POST' && pm.request.url.path.endsWith('/api/abonnements')) {",
+          "  const key = pm.collectionVariables.get('idempotencyKey');",
+          "  if (key) {",
+          "    pm.test('Idempotency-Key header was sent', function () {",
+          "      pm.expect(pm.request.headers.get('Idempotency-Key')).to.equal(key);",
+          "    });",
+          "  }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Local Direct (port 8081)",
+      "item": [
+        {
+          "name": "Plans",
+          "item": [
+            {
+              "name": "Create Plan",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/plans", "host": ["{{baseUrl}}"], "path": ["api", "plans"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nom\": \"Plan Pro\",\n  \"prixMensuel\": 49.99,\n  \"quotaUtilisateurs\": 10,\n  \"actif\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Plan created with 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                      "pm.test('Response has id', function () { pm.expect(pm.response.json()).to.have.property('id'); });",
+                      "pm.collectionVariables.set('planId', pm.response.json().id.toString());"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Plan by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/plans/{{planId}}", "host": ["{{baseUrl}}"], "path": ["api", "plans", "{{planId}}"] }
+              }
+            },
+            {
+              "name": "Update Plan",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/plans/{{planId}}", "host": ["{{baseUrl}}"], "path": ["api", "plans", "{{planId}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nom\": \"Plan Pro Updated\",\n  \"prixMensuel\": 59.99,\n  \"quotaUtilisateurs\": 15,\n  \"actif\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              }
+            },
+            {
+              "name": "Deactivate Plan",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/plans/{{planId}}", "host": ["{{baseUrl}}"], "path": ["api", "plans", "{{planId}}"] }
+              }
+            },
+            {
+              "name": "List All Plans",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/plans", "host": ["{{baseUrl}}"], "path": ["api", "plans"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abonnements",
+          "item": [
+            {
+              "name": "Create Subscription (with Idempotency-Key)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/abonnements", "host": ["{{baseUrl}}"], "path": ["api", "abonnements"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"planId\": {{planId}},\n  \"clientId\": {{clientId}},\n  \"dateDebut\": \"2026-11-22\",\n  \"dateFin\": \"2027-11-22\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Subscription created with 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                      "pm.test('Response has id', function () { pm.expect(pm.response.json()).to.have.property('id'); });",
+                      "pm.collectionVariables.set('subscriptionId', pm.response.json().id.toString());"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Subscription by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}"] }
+              }
+            },
+            {
+              "name": "Get Subscription Details (1 Feign call → client)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}/details", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "details"] }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Details has abonnement + plan + client', function () {",
+                      "  const res = pm.response.json();",
+                      "  pm.expect(res).to.have.property('abonnement');",
+                      "  pm.expect(res).to.have.property('plan');",
+                      "  pm.expect(res).to.have.property('client');",
+                      "  pm.expect(res.client).to.have.property('id');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Subscription Full Details (2 Feign calls → client + facturation) — V4 Aggregation",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}/full-details", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "full-details"] }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Full details has abonnement + plan + client + invoices[]', function () {",
+                      "  const res = pm.response.json();",
+                      "  pm.expect(res).to.have.property('abonnement');",
+                      "  pm.expect(res).to.have.property('plan');",
+                      "  pm.expect(res).to.have.property('client');",
+                      "  pm.expect(res).to.have.property('invoices');",
+                      "  pm.expect(res.invoices).to.be.an('array');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Subscription",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"planId\": {{planId}},\n  \"dateDebut\": \"2026-11-22\",\n  \"dateFin\": \"2027-12-22\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              }
+            },
+            {
+              "name": "Suspend Subscription",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}/suspend", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "suspend"] }
+              }
+            },
+            {
+              "name": "Reactivate Subscription",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}/reactivate", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "reactivate"] }
+              }
+            },
+            {
+              "name": "Cancel Subscription",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "cancel"] }
+              }
+            },
+            {
+              "name": "Renew Subscription",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}/renew", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "renew"] }
+              }
+            },
+            {
+              "name": "List All Subscriptions",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements", "host": ["{{baseUrl}}"], "path": ["api", "abonnements"] }
+              }
+            },
+            {
+              "name": "Get Subscriptions by Client",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/client/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "client", "{{clientId}}"] }
+              }
+            },
+            {
+              "name": "Search Subscriptions (paginated)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/search?clientId={{clientId}}&page=0&size=10", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "search"], "query": [{ "key": "clientId", "value": "{{clientId}}" }, { "key": "page", "value": "0" }, { "key": "size", "value": "10" }] }
+              }
+            },
+            {
+              "name": "Validate Quota",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}/validate-quota", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "validate-quota"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombreUtilisateurs\": 5\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              }
+            },
+            {
+              "name": "Get Statistics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/statistics", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "statistics"] }
+              }
+            },
+            {
+              "name": "Get Client History",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/client/{{clientId}}/history", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "client", "{{clientId}}", "history"] }
+              }
+            },
+            {
+              "name": "Get Upcoming Expirations",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/notifications/upcoming-expirations", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "notifications", "upcoming-expirations"] }
+              }
+            },
+            {
+              "name": "Send Expiration Notifications",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/notifications/send", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "notifications", "send"] }
+              }
+            },
+            {
+              "name": "Get All Clients (via Feign)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/clients", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "clients"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resilience (V6) — Circuit Breaker, Retry, Timeout",
+          "item": [
+            {
+              "name": "Trigger Circuit Breaker (Chaos Mode)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Chaos-Mode", "value": "fail" }],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/clients", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "clients"] }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('CB fallback returns 503', function () {",
+                      "  pm.expect(pm.response.code).to.equal(503);",
+                      "  pm.expect(pm.response.json()).to.have.property('message').that.includes('unavailable');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Trigger Retry (network delay simulation)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Chaos-Mode", "value": "delay" }],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}/details", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "details"] }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Request eventually succeeds or falls back after retries', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 503]);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Trigger Timeout (slow downstream)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Chaos-Mode", "value": "timeout" }],
+                "url": { "raw": "{{baseUrl}}/api/abonnements/{{subscriptionId}}/full-details", "host": ["{{baseUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "full-details"] }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Timeout fallback returns 503', function () {",
+                      "  pm.expect(pm.response.code).to.equal(503);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Idempotency Demo",
+          "item": [
+            {
+              "name": "Create Subscription (Idempotency-Key: fixed-key-123)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Idempotency-Key", "value": "fixed-key-123" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/abonnements", "host": ["{{baseUrl}}"], "path": ["api", "abonnements"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"planId\": {{planId}},\n  \"clientId\": {{clientId}},\n  \"dateDebut\": \"2026-11-22\",\n  \"dateFin\": \"2027-11-22\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('First request returns 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                      "pm.collectionVariables.set('idemSubscriptionId', pm.response.json().id.toString());"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Duplicate Create with Same Idempotency-Key",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Idempotency-Key", "value": "fixed-key-123" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/abonnements", "host": ["{{baseUrl}}"], "path": ["api", "abonnements"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"planId\": {{planId}},\n  \"clientId\": {{clientId}},\n  \"dateDebut\": \"2026-11-22\",\n  \"dateFin\": \"2027-11-22\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Duplicate returns 200 (not 201) with same ID', function () {",
+                      "  pm.expect(pm.response.code).to.equal(200);",
+                      "  const id = pm.response.json().id;",
+                      "  pm.expect(id.toString()).to.equal(pm.collectionVariables.get('idemSubscriptionId'));",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Via Gateway (port 8089)",
+      "item": [
+        {
+          "name": "Plans",
+          "item": [
+            {
+              "name": "Create Plan (via Gateway)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{gatewayUrl}}/api/plans", "host": ["{{gatewayUrl}}"], "path": ["api", "plans"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nom\": \"Plan Pro Gateway\",\n  \"prixMensuel\": 49.99,\n  \"quotaUtilisateurs\": 10,\n  \"actif\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Plan created via gateway with 201', function () { pm.expect(pm.response.code).to.equal(201); });"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List All Plans (via Gateway)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{gatewayUrl}}/api/plans", "host": ["{{gatewayUrl}}"], "path": ["api", "plans"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abonnements",
+          "item": [
+            {
+              "name": "Create Subscription (via Gateway)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+                ],
+                "url": { "raw": "{{gatewayUrl}}/api/abonnements", "host": ["{{gatewayUrl}}"], "path": ["api", "abonnements"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"planId\": {{planId}},\n  \"clientId\": {{clientId}},\n  \"dateDebut\": \"2026-11-22\",\n  \"dateFin\": \"2027-11-22\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              }
+            },
+            {
+              "name": "Get Subscription Details (via Gateway)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{gatewayUrl}}/api/abonnements/{{subscriptionId}}/details", "host": ["{{gatewayUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "details"] }
+              }
+            },
+            {
+              "name": "Get Subscription Full Details (via Gateway) — V4 Aggregation",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{gatewayUrl}}/api/abonnements/{{subscriptionId}}/full-details", "host": ["{{gatewayUrl}}"], "path": ["api", "abonnements", "{{subscriptionId}}", "full-details"] }
+              }
+            },
+            {
+              "name": "List All Subscriptions (via Gateway)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{gatewayUrl}}/api/abonnements", "host": ["{{gatewayUrl}}"], "path": ["api", "abonnements"] }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

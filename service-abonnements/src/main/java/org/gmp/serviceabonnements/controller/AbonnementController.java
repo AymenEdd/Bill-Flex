@@ -186,6 +186,15 @@ public class AbonnementController {
 
         return abonnementService.getAbonnementDetails(id);
     }
+
+    // Get complete subscription details with invoices (V4 aggregation: 2 Feign calls)
+    @GetMapping("/{id}/full-details")
+    public AbonnementFullDetailsResponse getAbonnementFullDetails(
+            @PathVariable Long id) {
+
+        return abonnementService.getAbonnementFullDetails(id);
+    }
+
     @GetMapping("/clients")
     public List<ClientDto> getAllClients() {
         return abonnementService.getAllClients();

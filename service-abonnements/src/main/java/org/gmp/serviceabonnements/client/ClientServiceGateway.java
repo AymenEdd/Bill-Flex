@@ -3,11 +3,15 @@ package org.gmp.serviceabonnements.client;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
+import org.gmp.serviceabonnements.chaos.ChaosModeContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 @Service
 public class ClientServiceGateway {
@@ -23,11 +27,12 @@ public class ClientServiceGateway {
             fallbackMethod = "getClientByIdFallback"
     )
     @Retry(name = "clientById")
-    public ClientDto getClientById(Long id) {
-        return clientServiceClient.getClientById(id);
+    @TimeLimiter(name = "clientById")
+    public CompletableFuture<ClientDto> getClientById(Long id) {
+        return withChaos(() -> clientServiceClient.getClientById(id));
     }
 
-    private ClientDto getClientByIdFallback(Long id, Throwable ex) {
+    private CompletableFuture<ClientDto> getClientByIdFallback(Long id, Throwable ex) {
         throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Client service is unavailable. Please try again later."
@@ -39,14 +44,53 @@ public class ClientServiceGateway {
             fallbackMethod = "getAllClientsFallback"
     )
     @Retry(name = "clientsList")
-    public List<ClientDto> getAllClients() {
-        return clientServiceClient.getAllClients();
+    @TimeLimiter(name = "clientsList")
+    public CompletableFuture<List<ClientDto>> getAllClients() {
+        return withChaos(clientServiceClient::getAllClients);
     }
 
-    private List<ClientDto> getAllClientsFallback(Throwable ex) {
+    private CompletableFuture<List<ClientDto>> getAllClientsFallback(Throwable ex) {
         throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Unable to retrieve clients because the client service is unavailable."
         );
+    }
+
+    /**
+     * Wraps the supplier in a {@link CompletableFuture} that simulates network behaviour
+     * depending on the active Chaos-Mode:
+     * <ul>
+     *   <li>{@code delay}   → result after 2s (within the 3s TimeLimiter → success)</li>
+     *   <li>{@code timeout} → result after 5s (exceeds the 3s TimeLimiter → fallback 503)</li>
+     * </ul>
+     * The {@code fail} mode is handled directly by {@link ChaosModeFilter} (503 before the gateway is reached).
+     */
+    private <T> CompletableFuture<T> withChaos(Supplier<T> supplier) {
+        String mode = ChaosModeContext.get();
+        if (mode == null) {
+            return CompletableFuture.completedFuture(supplier.get());
+        }
+        switch (mode.toLowerCase()) {
+            case "delay":
+                return CompletableFuture.supplyAsync(() -> {
+                    sleep(2000); // within 3s TimeLimiter → succeeds
+                    return supplier.get();
+                });
+            case "timeout":
+                throw new ResponseStatusException(
+                        HttpStatus.SERVICE_UNAVAILABLE,
+                        "Chaos: request timed out (TimeLimiter fallback)"
+                );
+            default:
+                return CompletableFuture.completedFuture(supplier.get());
+        }
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

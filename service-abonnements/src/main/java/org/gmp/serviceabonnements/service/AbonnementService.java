@@ -1,11 +1,14 @@
 package org.gmp.serviceabonnements.service;
 
 import org.gmp.serviceabonnements.client.ClientServiceGateway;
+import org.gmp.serviceabonnements.client.FacturationServiceClient;
+import org.gmp.serviceabonnements.client.InvoiceDto;
 import org.gmp.serviceabonnements.dto.AbonnementRequest;
 import org.gmp.serviceabonnements.dto.AbonnementResponse;
 import org.gmp.serviceabonnements.entity.Abonnement;
 import org.gmp.serviceabonnements.entity.Plan;
 import org.gmp.serviceabonnements.entity.StatutAbonnement;
+import org.gmp.serviceabonnements.kafka.SubscriptionEventPublisher;
 import org.gmp.serviceabonnements.mapper.AbonnementMapper;
 import org.gmp.serviceabonnements.repository.AbonnementRepository;
 import org.gmp.serviceabonnements.repository.PlanRepository;
@@ -24,6 +27,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.gmp.serviceabonnements.dto.AbonnementDetailsResponse;
+import org.gmp.serviceabonnements.dto.AbonnementFullDetailsResponse;
 import org.gmp.serviceabonnements.dto.PlanDetailsResponse;
 @Service
 @Transactional
@@ -32,16 +36,22 @@ public class AbonnementService {
     private final AbonnementRepository abonnementRepository;
     private final PlanRepository planRepository;
     private final ClientServiceGateway clientServiceGateway;
+    private final FacturationServiceClient facturationServiceClient;
+    private final SubscriptionEventPublisher eventPublisher;
     public AbonnementService(
             AbonnementRepository abonnementRepository,
             PlanRepository planRepository,
             ClientServiceGateway clientServiceGateway,
-            AbonnementEmailService abonnementEmailService
+            AbonnementEmailService abonnementEmailService,
+            FacturationServiceClient facturationServiceClient,
+            SubscriptionEventPublisher eventPublisher
     ) {
         this.abonnementRepository = abonnementRepository;
         this.planRepository = planRepository;
         this.clientServiceGateway = clientServiceGateway;
         this.abonnementEmailService = abonnementEmailService;
+        this.facturationServiceClient = facturationServiceClient;
+        this.eventPublisher = eventPublisher;
     }
 
     // Create a subscription
@@ -103,7 +113,7 @@ public class AbonnementService {
         // Verify that the client exists
         ClientDto client = clientServiceGateway.getClientById(
                 request.getClientId()
-        );
+        ).join();
 
         if (client == null) {
             throw new ResponseStatusException(
@@ -126,6 +136,9 @@ public class AbonnementService {
         abonnement.setIdempotencyKey(idempotencyKey);
         Abonnement saved =
                 abonnementRepository.save(abonnement);
+
+        // Publish subscription created event
+        eventPublisher.publishCreated(saved, plan.getNom());
 
         return AbonnementMapper.toResponse(saved);
     }
@@ -211,9 +224,12 @@ public class AbonnementService {
         abonnement.setStatut(StatutAbonnement.RESILIE);
         abonnement.setDateFin(java.time.LocalDate.now());
 
-        return AbonnementMapper.toResponse(
-                abonnementRepository.save(abonnement)
-        );
+        Abonnement saved = abonnementRepository.save(abonnement);
+
+        // Publish subscription cancelled event
+        eventPublisher.publishCancelled(saved, saved.getPlan().getNom());
+
+        return AbonnementMapper.toResponse(saved);
     }
 
     // Find subscription or return 404
@@ -239,6 +255,11 @@ public class AbonnementService {
         }
 
         abonnementRepository.saveAll(expiredSubscriptions);
+
+        // Publish subscription expired events
+        for (Abonnement abonnement : expiredSubscriptions) {
+            eventPublisher.publishExpired(abonnement, abonnement.getPlan().getNom());
+        }
 
         return expiredSubscriptions.size();
     }
@@ -371,6 +392,9 @@ public class AbonnementService {
 
         Abonnement saved = abonnementRepository.save(newAbonnement);
 
+        // Publish subscription renewed event
+        eventPublisher.publishRenewed(saved, oldAbonnement.getPlan().getNom());
+
         return AbonnementMapper.toResponse(saved);
     }
     @Transactional(readOnly = true)
@@ -498,7 +522,7 @@ public class AbonnementService {
             try {
                 ClientDto client = clientServiceGateway.getClientById(
                         abonnement.getClientId()
-                );
+                ).join();
 
                 if (client == null
                         || client.getEmail() == null
@@ -546,7 +570,7 @@ public class AbonnementService {
         // Retrieve client from service-clients through Feign
         ClientDto client = clientServiceGateway.getClientById(
                 abonnement.getClientId()
-        );
+        ).join();
 
         if (client == null) {
             throw new ResponseStatusException(
@@ -572,10 +596,24 @@ public class AbonnementService {
         );
     }
     public List<ClientDto> getAllClients() {
-        return clientServiceGateway.getAllClients();
+        return clientServiceGateway.getAllClients().join();
     }
 
+    @Transactional(readOnly = true)
+    public AbonnementFullDetailsResponse getAbonnementFullDetails(Long id) {
 
+        // Retrieve base details (abonnement + plan + client)
+        AbonnementDetailsResponse base = getAbonnementDetails(id);
 
+        // Retrieve invoices from service-facturation through Feign
+        List<InvoiceDto> invoices = facturationServiceClient.getInvoicesBySubscription(id);
 
+        // Build composed response
+        return new AbonnementFullDetailsResponse(
+                base.getAbonnement(),
+                base.getPlan(),
+                base.getClient(),
+                invoices
+        );
+    }
 }
