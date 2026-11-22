@@ -9,6 +9,9 @@ import org.gmp.serviceclients.enums.StatutClient;
 import org.gmp.serviceclients.models.Client;
 import org.gmp.serviceclients.repositories.Clientrepository;
 import org.springframework.stereotype.Service;
+import org.gmp.serviceclients.client.FacturationClient;
+import org.gmp.serviceclients.dto.ClientDetailsResponse;
+import org.gmp.serviceclients.exception.ResourceNotFoundException;
 
 
 import java.util.List;
@@ -18,6 +21,7 @@ import java.util.List;
 @Transactional
 public class ClientService {
     private final Clientrepository clientrepository;
+    private final FacturationClient facturationClient;
 
     public ClientResponse create(@Valid ClientRequest dto){
         Client client = Client.builder()
@@ -45,7 +49,7 @@ public class ClientService {
 
         Client client = clientrepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Client introuvable"));
+                        new ResourceNotFoundException("Client", id));
 
         return toResponse(client);
     }
@@ -54,7 +58,7 @@ public class ClientService {
 
         Client client = clientrepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Client introuvable"));
+                        new ResourceNotFoundException("Client", id));
 
         client.setName(dto.nom());
         client.setEmail(dto.email());
@@ -67,7 +71,7 @@ public class ClientService {
     public void delete(Long id) {
 
         Client client = clientrepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Client introuvable"));
+                .orElseThrow(() -> new ResourceNotFoundException("Client", id));
 
         clientrepository.delete(client);
     }
@@ -82,6 +86,11 @@ public class ClientService {
                 client.getStatut()
         );
 
+    }
+    @Transactional(Transactional.TxType.NOT_SUPPORTED)
+    public ClientDetailsResponse getDetails(Long id) {
+        ClientResponse client = findById(id);
+        return new ClientDetailsResponse(client, facturationClient.getInvoicesByClient(id));
     }
 }
 
