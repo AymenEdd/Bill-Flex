@@ -34,10 +34,19 @@ public class ClientController {
         return clientService.findById(id);
     }
 
-    /** Client enrichi : ses données + ses factures (récupérées dans service-facturation via Feign). */
+    /** V4 : Client enrichi — ses données + ses factures via Feign. */
     @GetMapping("/{id}/details")
     public ClientDetailsResponse details(@PathVariable Long id) {
         return clientService.getDetails(id);
+    }
+
+    /**
+     * V1 : endpoint de vérification utilisé par service-facturation (TVA + modePaiement).
+     * GET /api/clients/{id}/verification
+     */
+    @GetMapping("/{id}/verification")
+    public ClientResponse verification(@PathVariable Long id) {
+        return clientService.verify(id);
     }
 
     @PutMapping("/{id}")

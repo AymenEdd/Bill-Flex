@@ -346,7 +346,7 @@ Le projet est composé de sept applications :
 
 | Application | Rôle | Port |
 |---|---|---|
-| `api-gateway` | Point d'entrée unique, routage des requêtes | **8080** |
+| `api-gateway` | Point d'entrée unique, routage des requêtes | **8089** |
 | `eureka-server` | Serveur de découverte de services | **8761** |
 | `config-server` | Configuration externalisée des services | **8888** |
 | `service-abonnements` | Plans et abonnements | **8081** |
@@ -358,7 +358,7 @@ Le projet est composé de sept applications :
 flowchart TB
   client(["Client / Front Angular"])
 
-  gateway["api-gateway<br/>:8080"]
+  gateway["api-gateway<br/>:8089"]
   eureka["eureka-server<br/>:8761"]
   config["config-server<br/>:8888"]
 

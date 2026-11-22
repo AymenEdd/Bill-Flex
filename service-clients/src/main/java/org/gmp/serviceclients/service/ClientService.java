@@ -92,6 +92,15 @@ public class ClientService {
         ClientResponse client = findById(id);
         return new ClientDetailsResponse(client, facturationClient.getInvoicesByClient(id));
     }
+
+    /** V1 : endpoint de vérification TVA + modePaiement (utilisé par service-facturation). */
+    @Transactional
+    public ClientResponse verify(Long id) {
+        Client client = clientrepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client", id));
+        // Renvoie le client complet ; le service-facturation lit numeroTVA et modePaiement
+        return toResponse(client);
+    }
 }
 
 
