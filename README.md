@@ -352,7 +352,7 @@ Le projet est composé de sept applications :
 | `service-abonnements` | Plans et abonnements | **8081** |
 | `service-facturation` | Factures et lignes de facturation | **8082** |
 | `service-clients` | Clients et paiements | **8083** |
-| `service-notifications` | Notifications (e-mails) | **8084** |
+| `service-notifications` | Notifications (e-mails) | **8085** |
 
 ```mermaid
 flowchart TB
@@ -366,7 +366,7 @@ flowchart TB
     abo["service-abonnements<br/>:8081"]
     fact["service-facturation<br/>:8082"]
     cli["service-clients<br/>:8083"]
-    notif["service-notifications<br/>:8084"]
+    notif["service-notifications<br/>:8085"]
   end
 
   client --> gateway

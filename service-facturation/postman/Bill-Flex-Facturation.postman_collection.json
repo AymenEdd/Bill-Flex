@@ -1,0 +1,234 @@
+{
+  "info": {
+    "_postman_id": "service-facturation-aymane-id",
+    "name": "Bill-Flex - Service Facturation (Aymane)",
+    "description": "Collection Postman pour service-facturation (Port 8082)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "CRUD Factures",
+      "item": [
+        {
+          "name": "1. Créer une facture (BROUILLON)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": 1,\n  \"clientId\": 1,\n  \"periode\": \"2026-11\",\n  \"echeance\": \"2026-12-15\",\n  \"tauxTva\": 20.0,\n  \"lines\": [\n    {\n      \"libelle\": \"Abonnement Pro mensuel\",\n      \"quantite\": 1,\n      \"prixUnitaire\": 49.99\n    },\n    {\n      \"libelle\": \"Option support 24/7\",\n      \"quantite\": 1,\n      \"prixUnitaire\": 19.99\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8082/invoices",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices"]
+            }
+          }
+        },
+        {
+          "name": "2. Lister toutes les factures",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices"]
+            }
+          }
+        },
+        {
+          "name": "3. Obtenir une facture par ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1"]
+            }
+          }
+        },
+        {
+          "name": "4. Mettre à jour une facture (si BROUILLON)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": 1,\n  \"clientId\": 1,\n  \"periode\": \"2026-11\",\n  \"echeance\": \"2026-12-20\",\n  \"tauxTva\": 20.0\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8082/invoices/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1"]
+            }
+          }
+        },
+        {
+          "name": "5. Supprimer une facture (si BROUILLON)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lignes de facture",
+      "item": [
+        {
+          "name": "1. Obtenir les lignes d'une facture",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices/1/lines",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1", "lines"]
+            }
+          }
+        },
+        {
+          "name": "2. Ajouter une ligne à une facture",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"libelle\": \"Heures d'intégration personnalisée\",\n  \"quantite\": 3,\n  \"prixUnitaire\": 75.00\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8082/invoices/1/lines",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1", "lines"]
+            }
+          }
+        },
+        {
+          "name": "3. Supprimer une ligne d'une facture",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices/1/lines/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1", "lines", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cycle de vie et Machine d'états (V4 / V5 / V6)",
+      "item": [
+        {
+          "name": "1. Consultation enrichie (DTO composé via Feign) V4",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices/1/details",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1", "details"]
+            }
+          }
+        },
+        {
+          "name": "2. Émettre la facture (POST /invoices/{id}/emit)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices/1/emit",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1", "emit"]
+            }
+          }
+        },
+        {
+          "name": "3. Payer la facture (POST /invoices/{id}/pay)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices/1/pay",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1", "pay"]
+            }
+          }
+        },
+        {
+          "name": "4. Annuler la facture (POST /invoices/{id}/cancel)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices/1/cancel",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "1", "cancel"]
+            }
+          }
+        },
+        {
+          "name": "5. Déclencher vérification des factures échues (V6 Scheduler)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/invoices/check-overdue",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["invoices", "check-overdue"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
