@@ -35,12 +35,22 @@ public class SubscriptionEventPublisher {
     }
 
     public void publishRenewed(Abonnement abonnement, String planName) {
+        Long planId = (abonnement.getPlan() != null) ? abonnement.getPlan().getId() : null;
+        String periode = (abonnement.getProchaineDateFacturation() != null)
+                ? abonnement.getProchaineDateFacturation().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+                : java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+        publishRenewed(abonnement, planName, planId, periode);
+    }
+
+    public void publishRenewed(Abonnement abonnement, String planName, Long planId, String periode) {
         var event = new SubscriptionEvent.SubscriptionRenewedEvent(
                 UUID.randomUUID().toString(),
                 Instant.now(),
                 abonnement.getId(),
                 abonnement.getClientId(),
+                planId,
                 planName,
+                periode,
                 abonnement.getDateDebut(),
                 abonnement.getDateFin()
         );

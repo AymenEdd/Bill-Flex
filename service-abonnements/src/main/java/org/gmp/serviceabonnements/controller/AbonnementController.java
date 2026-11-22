@@ -20,7 +20,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.gmp.serviceabonnements.client.ClientDto;
 @RestController
-@RequestMapping("/api/abonnements")
+@RequestMapping({"/api/abonnements", "/api/subscriptions", "/subscriptions"})
 public class AbonnementController {
 
     private final AbonnementService abonnementService;

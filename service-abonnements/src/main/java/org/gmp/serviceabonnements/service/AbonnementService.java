@@ -290,6 +290,12 @@ public class AbonnementService {
             LocalDate nextDate =
                     abonnement.getProchaineDateFacturation();
 
+            // Publish subscription renewed event before advancing date
+            String periode = (nextDate != null)
+                    ? nextDate.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+                    : today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+            eventPublisher.publishRenewed(abonnement, abonnement.getPlan().getNom(), abonnement.getPlan().getId(), periode);
+
             // Advance to the next future billing date
             do {
                 nextDate = nextDate.plusMonths(1);
@@ -381,6 +387,17 @@ public class AbonnementService {
             );
         }
 
+        boolean alreadySubscribed = abonnementRepository.existsByClientIdAndStatut(
+                oldAbonnement.getClientId(),
+                StatutAbonnement.ACTIF
+        );
+        if (alreadySubscribed) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Client already has an active subscription"
+            );
+        }
+
         Abonnement newAbonnement = new Abonnement();
 
         newAbonnement.setClientId(oldAbonnement.getClientId());
@@ -393,7 +410,8 @@ public class AbonnementService {
         Abonnement saved = abonnementRepository.save(newAbonnement);
 
         // Publish subscription renewed event
-        eventPublisher.publishRenewed(saved, oldAbonnement.getPlan().getNom());
+        String periode = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+        eventPublisher.publishRenewed(saved, oldAbonnement.getPlan().getNom(), oldAbonnement.getPlan().getId(), periode);
 
         return AbonnementMapper.toResponse(saved);
     }

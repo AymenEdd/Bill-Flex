@@ -33,6 +33,15 @@ public class ClientServiceGateway {
     }
 
     private CompletableFuture<ClientDto> getClientByIdFallback(Long id, Throwable ex) {
+        if (ex instanceof feign.FeignException fe && fe.status() == 404) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found");
+        }
+        if (ex.getCause() instanceof feign.FeignException fe && fe.status() == 404) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found");
+        }
+        if (ex instanceof ResponseStatusException rse) {
+            throw rse;
+        }
         throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Client service is unavailable. Please try again later."
@@ -77,10 +86,10 @@ public class ClientServiceGateway {
                     return supplier.get();
                 });
             case "timeout":
-                throw new ResponseStatusException(
-                        HttpStatus.SERVICE_UNAVAILABLE,
-                        "Chaos: request timed out (TimeLimiter fallback)"
-                );
+                return CompletableFuture.supplyAsync(() -> {
+                    sleep(5000); // exceeds 3s TimeLimiter → triggers TimeLimiter
+                    return supplier.get();
+                });
             default:
                 return CompletableFuture.completedFuture(supplier.get());
         }

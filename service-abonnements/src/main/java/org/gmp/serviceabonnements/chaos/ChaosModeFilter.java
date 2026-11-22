@@ -35,7 +35,7 @@ public class ChaosModeFilter extends OncePerRequestFilter {
             ChaosModeContext.set(mode.trim());
         }
         try {
-            if ("fail".equalsIgnoreCase(mode) || "timeout".equalsIgnoreCase(mode)) {
+            if ("fail".equalsIgnoreCase(mode)) {
                 response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
                 response.setContentType("application/json");
                 response.getWriter().write(

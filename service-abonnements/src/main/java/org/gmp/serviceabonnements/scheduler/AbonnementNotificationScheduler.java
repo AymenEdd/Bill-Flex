@@ -2,10 +2,10 @@
 package org.gmp.serviceabonnements.scheduler;
 
 import org.gmp.serviceabonnements.service.AbonnementService;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
-@Component
+/**
+ * Delegated to {@link AbonnementScheduler} to prevent duplicate scheduled execution.
+ */
 public class AbonnementNotificationScheduler {
 
     private final AbonnementService abonnementService;
@@ -15,27 +15,11 @@ public class AbonnementNotificationScheduler {
         this.abonnementService = abonnementService;
     }
 
-    // Automatically expire subscriptions every day at 00:05
-    @Scheduled(cron = "0 5 0 * * *", zone = "Africa/Casablanca")
     public void expireSubscriptionsAutomatically() {
-
-        int expired = abonnementService.expireSubscriptions();
-
-        System.out.println(
-                "Automatic expiration: "
-                        + expired + " subscription(s) expired."
-        );
+        abonnementService.expireSubscriptions();
     }
 
-    // Automatically send expiration reminder emails every day at 09:00
-    @Scheduled(cron = "0 0 9 * * *", zone = "Africa/Casablanca")
     public void sendExpirationNotificationsAutomatically() {
-
-        int sent = abonnementService.sendExpirationNotifications();
-
-        System.out.println(
-                "Automatic expiration notifications: "
-                        + sent + " email(s) sent."
-        );
+        abonnementService.sendExpirationNotifications();
     }
 }

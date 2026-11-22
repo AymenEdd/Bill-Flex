@@ -41,7 +41,9 @@ public sealed interface SubscriptionEvent permits SubscriptionEvent.Subscription
             Instant timestamp,
             Long subscriptionId,
             Long clientId,
+            Long planId,
             String planName,
+            String periode,
             LocalDate dateDebut,
             LocalDate dateFin
     ) implements SubscriptionEvent {
