@@ -5,6 +5,8 @@ import org.gmp.serviceabonnements.entity.StatutAbonnement;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +14,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface AbonnementRepository
         extends JpaRepository<Abonnement, Long> {
-
+    Optional<Abonnement> findByIdempotencyKey(String idempotencyKey);
     List<Abonnement> findByClientId(Long clientId);
 
     List<Abonnement> findByStatut(StatutAbonnement statut);

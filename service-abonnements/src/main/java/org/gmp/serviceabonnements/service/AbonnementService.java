@@ -1,5 +1,6 @@
 package org.gmp.serviceabonnements.service;
 
+import org.gmp.serviceabonnements.client.ClientServiceGateway;
 import org.gmp.serviceabonnements.dto.AbonnementRequest;
 import org.gmp.serviceabonnements.dto.AbonnementResponse;
 import org.gmp.serviceabonnements.entity.Abonnement;
@@ -22,29 +23,50 @@ import org.gmp.serviceabonnements.dto.AbonnementNotificationResponse;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-
+import org.gmp.serviceabonnements.dto.AbonnementDetailsResponse;
+import org.gmp.serviceabonnements.dto.PlanDetailsResponse;
 @Service
 @Transactional
 public class AbonnementService {
     private final AbonnementEmailService abonnementEmailService;
     private final AbonnementRepository abonnementRepository;
     private final PlanRepository planRepository;
-    private final ClientServiceClient clientServiceClient;
+    private final ClientServiceGateway clientServiceGateway;
     public AbonnementService(
             AbonnementRepository abonnementRepository,
             PlanRepository planRepository,
-            ClientServiceClient clientServiceClient,
+            ClientServiceGateway clientServiceGateway,
             AbonnementEmailService abonnementEmailService
     ) {
         this.abonnementRepository = abonnementRepository;
         this.planRepository = planRepository;
-        this.clientServiceClient = clientServiceClient;
+        this.clientServiceGateway = clientServiceGateway;
         this.abonnementEmailService = abonnementEmailService;
     }
 
     // Create a subscription
-    public AbonnementResponse create(AbonnementRequest request) {
+    public AbonnementResponse create(
+            AbonnementRequest request,
+            String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Idempotency-Key header is required"
+            );
+        }
 
+        if (idempotencyKey.length() > 100) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Idempotency-Key must not exceed 100 characters"
+            );
+        }
+
+        var existing = abonnementRepository.findByIdempotencyKey(idempotencyKey);
+
+        if (existing.isPresent()) {
+            return AbonnementMapper.toResponse(existing.get());
+        }
         Plan plan = planRepository.findById(request.getPlanId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
@@ -79,7 +101,7 @@ public class AbonnementService {
             );
         }
         // Verify that the client exists
-        ClientDto client = clientServiceClient.getClientById(
+        ClientDto client = clientServiceGateway.getClientById(
                 request.getClientId()
         );
 
@@ -101,7 +123,7 @@ public class AbonnementService {
         }
         Abonnement abonnement =
                 AbonnementMapper.toEntity(request, plan);
-
+        abonnement.setIdempotencyKey(idempotencyKey);
         Abonnement saved =
                 abonnementRepository.save(abonnement);
 
@@ -474,7 +496,7 @@ public class AbonnementService {
             }
 
             try {
-                ClientDto client = clientServiceClient.getClientById(
+                ClientDto client = clientServiceGateway.getClientById(
                         abonnement.getClientId()
                 );
 
@@ -512,7 +534,46 @@ public class AbonnementService {
 
         return sent;
     }
+    @Transactional(readOnly = true)
+    public AbonnementDetailsResponse getAbonnementDetails(Long id) {
 
+        // Retrieve subscription
+        Abonnement abonnement = getAbonnementOrThrow(id);
+
+        // Retrieve associated plan
+        Plan plan = abonnement.getPlan();
+
+        // Retrieve client from service-clients through Feign
+        ClientDto client = clientServiceGateway.getClientById(
+                abonnement.getClientId()
+        );
+
+        if (client == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Client not found"
+            );
+        }
+
+        // Build plan DTO
+        PlanDetailsResponse planDetails = new PlanDetailsResponse(
+                plan.getId(),
+                plan.getNom(),
+                plan.getPrixMensuel(),
+                plan.getQuotaUtilisateurs(),
+                plan.getActif()
+        );
+
+        // Build composed response
+        return new AbonnementDetailsResponse(
+                AbonnementMapper.toResponse(abonnement),
+                planDetails,
+                client
+        );
+    }
+    public List<ClientDto> getAllClients() {
+        return clientServiceGateway.getAllClients();
+    }
 
 
 

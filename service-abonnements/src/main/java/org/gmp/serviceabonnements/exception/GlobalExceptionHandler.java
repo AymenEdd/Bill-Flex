@@ -10,10 +10,12 @@ import feign.FeignException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
+    private static final Logger log =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(
             ResponseStatusException ex) {
@@ -49,7 +51,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
-
+        log.error("Unexpected error in service-abonnements:", ex);
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
@@ -75,6 +77,7 @@ public class GlobalExceptionHandler {
                         "Clients service is unavailable or returned an error"
                 ));
     }
+
 
 }
 

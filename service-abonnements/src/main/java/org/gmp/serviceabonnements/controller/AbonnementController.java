@@ -17,6 +17,8 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.gmp.serviceabonnements.client.ClientDto;
 @RestController
 @RequestMapping("/api/abonnements")
 public class AbonnementController {
@@ -33,9 +35,10 @@ public class AbonnementController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AbonnementResponse create(
-            @Valid @RequestBody AbonnementRequest request
-    ) {
-        return abonnementService.create(request);
+            @Valid @RequestBody AbonnementRequest request,
+            @RequestHeader("Idempotency-Key") String idempotencyKey) {
+
+        return abonnementService.create(request, idempotencyKey);
     }
 
     // Get all subscriptions
@@ -175,6 +178,17 @@ public class AbonnementController {
         return ResponseEntity.ok(
                 sent + " expiration notification(s) sent successfully"
         );
+    }
+    // Get complete subscription details
+    @GetMapping("/{id}/details")
+    public AbonnementDetailsResponse getAbonnementDetails(
+            @PathVariable Long id) {
+
+        return abonnementService.getAbonnementDetails(id);
+    }
+    @GetMapping("/clients")
+    public List<ClientDto> getAllClients() {
+        return abonnementService.getAllClients();
     }
 
 }

@@ -11,6 +11,8 @@ public class Abonnement {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "idempotency_key", unique = true, length = 100)
+    private String idempotencyKey;
     // Relation with Plan
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "plan_id", nullable = false)
@@ -111,5 +113,12 @@ public class Abonnement {
 
     public void setExpirationNotificationSent(boolean expirationNotificationSent) {
         this.expirationNotificationSent = expirationNotificationSent;
+    }
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 }
